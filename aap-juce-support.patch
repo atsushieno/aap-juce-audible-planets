@@ -1,0 +1,250 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 7666919..f58aec7 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -103,6 +103,9 @@ if (APPLE)
+ 	set_target_properties(${PROJECT_NAME} PROPERTIES XCODE_ATTRIBUTE_CLANG_LINK_OBJC_RUNTIME "NO")
+ endif()
+ 
++# this has to be placed before juce_generate_juce_header()...
++juce_add_modules(${AAP_JUCE_DIR}/aap-modules/aap_audio_processors)
++
+ juce_generate_juce_header (${PROJECT_NAME})
+ 
+ get_property (debug_configs GLOBAL PROPERTY DEBUG_CONFIGURATIONS)
+@@ -129,3 +132,43 @@ if (APPLE)
+ 			XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH[variant=Debug] "YES"
+ 			)
+ endif()
++
++# begin AAP specifics -->
++
++# They are needed in desktop too, for generate-aap-metadata.
++target_include_directories(${PROJECT_NAME} PUBLIC
++		"${AAP_DIR}/include"
++		"${AAP_JUCE_DIR}/aap-modules"
++)
++
++target_compile_definitions(${PROJECT_NAME} PUBLIC
++		JUCEAAP_HAVE_AUDIO_PLAYHEAD_NEW_POSITION_INFO=1
++		JUCE_PUSH_NOTIFICATIONS=1
++		JUCE_PUSH_NOTIFICATIONS_ACTIVITY="com/rmsl/juce/JuceActivity"
++)
++
++message("AAP_DIR: ${AAP_DIR}")
++message("AAP_JUCE_DIR: ${AAP_JUCE_DIR}")
++
++if (ANDROID)
++	find_library(log "log")
++	find_library(android "android")
++	find_library(glesv2 "GLESv2")
++	find_library(egl "EGL")
++	#set(cpufeatures_lib "cpufeatures")
++	#set(oboe_lib "oboe")
++
++	target_include_directories(${PROJECT_NAME} PRIVATE
++			"${ANDROID_NDK}/sources/android/cpufeatures"
++			#"${OBOE_DIR}/include"
++	)
++
++	add_compile_definitions(
++			[[JUCE_ANDROID=1]]
++			[[JUCE_DONT_AUTO_OPEN_MIDI_DEVICES_ON_MOBILE=1]]
++	)
++endif (ANDROID)
++
++target_link_libraries(${PROJECT_NAME} PRIVATE aap_audio_processors)
++
++# <-- end AAP specifics
+diff --git a/Source/APModAdditions.h b/Source/APModAdditions.h
+index 70bede6..a56057d 100644
+--- a/Source/APModAdditions.h
++++ b/Source/APModAdditions.h
+@@ -244,9 +244,11 @@ public:
+ 		proc.modMatrix.setModDepth(macroSrc, gin::ModDstId(p->getModIndex()), 0.0f);
+ 	}
+ 
++#if !JUCE_ANDROID
+ 	void mouseDown(const MouseEvent& /*ev*/) override {
+ 		m.showMenu(PopupMenu::Options().withMousePosition());
+ 	}
++#endif
+ 
+ 	class PopupLNF : public juce::LookAndFeel_V4
+ 	{
+Submodule modules/gin contains modified content
+diff --git a/modules/gin/modules/gin_gui/utilities/gin_layout.cpp b/modules/gin/modules/gin_gui/utilities/gin_layout.cpp
+index dba9b45c52..9927d36ec3 100644
+--- a/modules/gin/modules/gin_gui/utilities/gin_layout.cpp
++++ b/modules/gin/modules/gin_gui/utilities/gin_layout.cpp
+@@ -126,14 +126,14 @@ static juce::String getComponentPath (juce::Component& parent, juce::Component&
+ Layout::Layout (juce::Component& p) : parent (p)
+ {
+     setupParser();
+-   #if ! JUCE_IOS
++   #if ! JUCE_IOS && ! JUCE_ANDROID
+     watcher.addListener (this);
+    #endif
+ }
+ 
+ Layout::~Layout()
+ {
+-   #if ! JUCE_IOS
++   #if ! JUCE_IOS && ! JUCE_ANDROID
+     watcher.removeListener (this);
+    #endif
+ }
+@@ -202,7 +202,7 @@ void Layout::setLayout (const juce::String& filename, const juce::File& source)
+                 if (auto rawLayout = source.loadFileAsString(); rawLayout.isNotEmpty() && parseLayout (rawLayout))
+                 {
+                     layoutFile = source;
+-                   #if ! JUCE_IOS
++                   #if ! JUCE_IOS && ! JUCE_ANDROID
+                     watcher.addFolder (source.getParentDirectory());
+                    #endif
+                     break;
+@@ -342,7 +342,7 @@ juce::Component* Layout::setBounds (const juce::String& currentPath, const juce:
+     return curComponent;
+ }
+ 
+-#if ! JUCE_IOS
++#if ! JUCE_IOS && ! JUCE_ANDROID
+ void Layout::fileChanged (const juce::File& f, gin::FileSystemWatcher::FileSystemEvent)
+ {
+     if (f == layoutFile)
+diff --git a/modules/gin/modules/gin_gui/utilities/gin_layout.h b/modules/gin/modules/gin_gui/utilities/gin_layout.h
+index d2a74bada7..5eda1d5498 100644
+--- a/modules/gin/modules/gin_gui/utilities/gin_layout.h
++++ b/modules/gin/modules/gin_gui/utilities/gin_layout.h
+@@ -4,13 +4,13 @@
+ /** Layout components with json, supports hot reloading
+  */
+ class Layout
+-#if ! JUCE_IOS
++#if ! JUCE_IOS && ! JUCE_ANDROID
+     : public FileSystemWatcher::Listener
+ #endif
+ {
+ public:
+     Layout (juce::Component&);
+-   #if JUCE_IOS
++   #if JUCE_IOS || JUCE_ANDROID
+     ~Layout();
+    #else
+     ~Layout() override;
+@@ -27,13 +27,13 @@ private:
+     void doComponent (const juce::String& currentPath, const juce::var& components);
+     juce::Component* setBounds (const juce::String& currentPath, const juce::String& id, int idIdx, const juce::var& component);
+ 
+-   #if ! JUCE_IOS
++   #if ! JUCE_IOS && ! JUCE_ANDROID
+     void fileChanged (const juce::File&, gin::FileSystemWatcher::FileSystemEvent) override;
+    #endif
+ 
+     std::map<juce::String, juce::Component*> findAllComponents() const;
+ 
+-   #if ! JUCE_IOS
++   #if ! JUCE_IOS && ! JUCE_ANDROID
+     gin::FileSystemWatcher watcher;
+    #endif
+ 
+diff --git a/modules/gin/modules/gin_plugin/components/gin_plugineditor.cpp b/modules/gin/modules/gin_plugin/components/gin_plugineditor.cpp
+index cd2d316952..1c185ab6ec 100644
+--- a/modules/gin/modules/gin_plugin/components/gin_plugineditor.cpp
++++ b/modules/gin/modules/gin_plugin/components/gin_plugineditor.cpp
+@@ -34,7 +34,7 @@ void UpdateChecker::timerCallback()
+ 
+ void UpdateChecker::run()
+ {
+-  #if ! JUCE_IOS
++  #if ! JUCE_IOS && ! JUCE_ANDROID
+     juce::URL versionsUrl = juce::URL (slProc.processorOptions.updatesURL).withParameter ("plugin", slProc.processorOptions.pluginName).withParameter ("version", slProc.processorOptions.pluginVersion);
+     juce::XmlDocument doc (versionsUrl.readEntireTextStream());
+     if (std::unique_ptr<juce::XmlElement> root = doc.getDocumentElement())
+@@ -105,7 +105,7 @@ void NewsChecker::timerCallback()
+ 
+ void NewsChecker::run()
+ {
+-    #if ! JUCE_IOS
++    #if ! JUCE_IOS && ! JUCE_ANDROID
+     juce::XmlDocument doc (juce::URL ("https://socalabs.com/feed/").readEntireTextStream());
+     if (std::unique_ptr<juce::XmlElement> root = doc.getDocumentElement())
+     {
+diff --git a/modules/gin/modules/gin_plugin/plugin/gin_processor.cpp b/modules/gin/modules/gin_plugin/plugin/gin_processor.cpp
+index dc6a6a0d5c..a54e241c35 100644
+--- a/modules/gin/modules/gin_plugin/plugin/gin_processor.cpp
++++ b/modules/gin/modules/gin_plugin/plugin/gin_processor.cpp
+@@ -61,8 +61,10 @@ void Processor::init()
+     state.getOrCreateChildWithName ("instance", nullptr);
+     loadAllPrograms();
+ 
++#if ! JUCE_IOS && ! JUCE_ANDROID
+     watcher.addListener (this);
+     watcher.addFolder (getProgramDirectory());
++#endif
+ }
+ 
+ juce::PropertiesFile* Processor::getSettings()
+@@ -340,12 +342,14 @@ bool Processor::hasProgram (juce::String name)
+     return false;
+ }
+ 
++#if ! JUCE_IOS && ! JUCE_ANDROID
+ void Processor::folderChanged (const juce::File&)
+ {
+     auto now = juce::Time::getCurrentTime();
+     if (now - lastProgramsUpdated > juce::RelativeTime::seconds (1.0))
+         startTimer (150);
+ }
++#endif
+ 
+ void Processor::timerCallback()
+ {
+diff --git a/modules/gin/modules/gin_plugin/plugin/gin_processor.h b/modules/gin/modules/gin_plugin/plugin/gin_processor.h
+index 54961acc7f..7872ef79e1 100644
+--- a/modules/gin/modules/gin_plugin/plugin/gin_processor.h
++++ b/modules/gin/modules/gin_plugin/plugin/gin_processor.h
+@@ -100,7 +100,9 @@ public:
+ */
+ class Processor : public ProcessorBaseClass,
+                   public juce::ChangeBroadcaster,
++#if ! JUCE_IOS && ! JUCE_ANDROID
+                   private FileSystemWatcher::Listener,
++#endif
+                   private juce::Timer
+ {
+ public:
+@@ -208,7 +210,9 @@ protected:
+     void extractProgram (const juce::String& name, const void* data, int sz);
+ 
+ private:
++#if ! JUCE_IOS && ! JUCE_ANDROID
+     void folderChanged (const juce::File&) override;
++#endif
+     void timerCallback() override;
+ 
+     std::unique_ptr<juce::PropertiesFile> settings;
+@@ -222,7 +226,9 @@ private:
+ 
+     void updateParams();
+ 
++#if ! JUCE_IOS && ! JUCE_ANDROID
+     FileSystemWatcher watcher;
++#endif
+ 
+     juce::String currentProgramName;
+     int maxPrograms = 0;
+Submodule modules/melatonin_blur contains modified content
+diff --git a/modules/melatonin_blur/melatonin/internal/implementations.h b/modules/melatonin_blur/melatonin/internal/implementations.h
+index 7dba14c..ed629b5 100644
+--- a/modules/melatonin_blur/melatonin/internal/implementations.h
++++ b/modules/melatonin_blur/melatonin/internal/implementations.h
+@@ -29,7 +29,7 @@
+     #else
+         #include "../implementations/float_vector_stack_blur.h"
+     #endif
+-#elif JUCE_LINUX
++#elif JUCE_LINUX || JUCE_ANDROID
+     #include "../implementations/float_vector_stack_blur.h"
+ #else
+   #error "Unsupported platform!"

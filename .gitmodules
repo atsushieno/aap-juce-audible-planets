@@ -1,0 +1,12 @@
+[submodule "external/AudiblePlanets"]
+	path = external/AudiblePlanets
+	url = https://github.com/gregrecco67/AudiblePlanets.git
+[submodule "external/aap-core"]
+	path = external/aap-core
+	url = https://github.com/atsushieno/aap-core.git
+[submodule "external/aap-juce"]
+	path = external/aap-juce
+	url = https://github.com/atsushieno/aap-juce.git
+[submodule "external/Audible-Planets-Presets"]
+	path = external/Audible-Planets-Presets
+	url = https://github.com/gregrecco67/Audible-Planets-Presets.git

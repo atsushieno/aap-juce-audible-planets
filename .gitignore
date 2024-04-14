@@ -1,0 +1,10 @@
+local.properties
+.idea
+.cxx
+build
+.gradle
+dist
+
+.stamp-juce
+.stamp-eq
+

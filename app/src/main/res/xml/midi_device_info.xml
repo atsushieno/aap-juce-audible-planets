@@ -1,0 +1,6 @@
+<devices>
+    <device name="AudiblePlanets" manufacturer="androidaudioplugin.org" product="AudiblePlanets">
+        <input-port name="input" />
+    </device>
+</devices>
+
