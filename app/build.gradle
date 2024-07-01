@@ -5,12 +5,11 @@ plugins {
 
 android {
     namespace "org.androidaudioplugin.ports.juce.audibleplanets"
-    //compileSdk = 34
-    compileSdkPreview = "VanillaIceCream"
+    compileSdk = libs.versions.android.compileSdk.get().toInteger()
 
     defaultConfig {
         applicationId "org.androidaudioplugin.ports.juce.audibleplanets"
-        minSdk = 29
+        minSdk = libs.versions.android.minSdk.get().toInteger()
         ndk {
             abiFilters "x86", "x86_64", "arm64-v8a"
         }
