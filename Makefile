@@ -8,6 +8,8 @@ APP_BUILD_DIR=$(PWD)
 APP_SRC_DIR=$(PWD)/external/AudiblePlanets
 JUCE_DIR=$(APP_SRC_DIR)/JUCE
 
+APP_ICON=$(APP_SRC_DIR)/assets/icon.png
+
 # For metadata updates, relative to build-desktop
 APP_SHARED_CODE_LIBS="$(APP_NAME)_artefacts/lib$(APP_NAME)_SharedCode.a"
 
