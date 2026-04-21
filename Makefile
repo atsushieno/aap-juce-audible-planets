@@ -21,7 +21,8 @@ JUCE_PATCHES= \
 	$(PWD)/external/aap-juce/juce-patches/7.0.6/export-jni-symbols.patch \
 	$(PWD)/external/aap-juce/juce-patches/7.0.6/support-plugin-ui.patch \
 	$(PWD)/external/aap-juce/juce-patches/7.0.11/disable-cgwindowlistcreateimage.patch \
-	$(PWD)/external/aap-juce/juce-patches/7.0.11/juce-component-peer-view-touch.patch
+	$(PWD)/external/aap-juce/juce-patches/7.0.11/juce-component-peer-view-touch.patch \
+	$(PWD)/external/aap-juce/juce-patches/7.0.11/popup-menu-android.patch
 
 JUCE_PATCH_DEPTH=1
 
