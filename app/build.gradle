@@ -3,6 +3,25 @@ plugins {
     id 'kotlin-android'
 }
 
+def generatedAssets = "$buildDir/generated-assets"
+def presetsSrc = "$projectDir/../external/Audible-Planets-Presets"
+
+task generateAudiblePlanetsAssets {
+    inputs.dir presetsSrc
+    outputs.dir generatedAssets
+    doLast {
+        def dst = new File("$generatedAssets/AudiblePlanets/programs")
+        dst.mkdirs()
+        new File(presetsSrc).eachFileMatch(~/.*\.xml/) { f ->
+            new File(dst, f.name).bytes = f.bytes
+        }
+    }
+}
+
+tasks.matching { it.name == "preBuild" }.configureEach {
+    dependsOn generateAudiblePlanetsAssets
+}
+
 android {
     namespace "org.androidaudioplugin.ports.juce.audibleplanets"
     compileSdk = libs.versions.android.compileSdk.get().toInteger()
@@ -37,6 +56,7 @@ android {
              "../external/aap-juce/java"]
         main.res.srcDirs +=
             []
+        main.assets.srcDirs += ["$buildDir/generated-assets"]
     }
 
     dependencies {
